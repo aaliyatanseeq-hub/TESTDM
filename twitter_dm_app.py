@@ -364,7 +364,7 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 7860))
     print(f"Starting on port {port}")
     build().launch(
-        server_name="127.0.0.1",
+        server_name="0.0.0.0",
         server_port=port,
         share=False,
         css=CSS,
