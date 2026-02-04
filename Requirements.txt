@@ -1,0 +1,3 @@
+gradio
+tweepy
+python-dotenv
