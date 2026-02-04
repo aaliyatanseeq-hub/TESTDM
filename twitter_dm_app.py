@@ -5,6 +5,9 @@ import gradio as gr
 
 load_dotenv()
 
+# =============================
+# Twitter Client
+# =============================
 client = tweepy.Client(
     bearer_token=os.getenv("BEARER_TOKEN"),
     consumer_key=os.getenv("CONSUMER_KEY"),
@@ -17,13 +20,13 @@ def check_connection():
     try:
         me = client.get_me()
         if me.data:
-            return f"CONNECTED: @{me.data.username}"
-        return "CONNECTION FAILED"
-    except Exception as e:
-        return f"ERROR: {str(e)[:40]}"
+            return f"@{me.data.username}"
+        return "Not Connected"
+    except Exception:
+        return "Connection Error"
 
 CONNECTED_STATUS = check_connection()
-print(CONNECTED_STATUS)
+print(f"Status: {CONNECTED_STATUS}")
 
 def get_user_id(username):
     username = username.lstrip("@").strip()
@@ -37,217 +40,332 @@ def get_user_id(username):
 
 def send_dm(recipient_id, message):
     try:
-        res = client.create_direct_message(
+        client.create_direct_message(
             participant_id=int(recipient_id),
             text=message,
             user_auth=True,
         )
-        return {"success": True, "data": res.data}
+        return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 def handle_send(username, message):
     if not username or not username.strip():
-        return "[ERROR] NO USERNAME PROVIDED"
+        return "❌ Username is required"
     if not message or not message.strip():
-        return "[ERROR] NO MESSAGE PROVIDED"
+        return "❌ Message cannot be empty"
 
     clean = username.lstrip("@").strip()
     user_id = get_user_id(clean)
 
     if user_id is None:
-        return f'[ERROR] USER @{clean} NOT FOUND'
+        return f"❌ User @{clean} not found"
 
     result = send_dm(user_id, message.strip())
 
     if result["success"]:
-        return f'MESSAGE SENT\nTO: @{clean}\nUSER_ID: {user_id}\nCONTENT: "{message.strip()}"'
-    return f'[FAILED] {result["error"]}'
+        return (
+            f"✅ Message sent successfully\n\n"
+            f"User: @{clean}\n"
+            f"User ID: {user_id}\n\n"
+            f"Message:\n{message.strip()}"
+        )
 
+    return f"❌ Failed to send message\n\n{result['error']}"
+
+# =============================
+# INTERNAL TOOL CSS
+# =============================
 CSS = """
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 * {
-    font-family: 'JetBrains Mono', 'Courier New', monospace !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
 body {
-    background: #0a0a0a;
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%) !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .gradio-container {
-    max-width: 680px !important;
-    margin: 0 auto !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
-.main-box {
-    background: #111;
-    border: 2px solid #333;
-    padding: 0;
-    margin: 40px 0;
+/* Hide Gradio Footer */
+footer {
+    display: none !important;
 }
 
-.header-bar {
-    background: #1a1a1a;
-    border-bottom: 2px solid #333;
-    padding: 16px 24px;
+.gradio-container footer {
+    display: none !important;
 }
 
-.header-bar h1 {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #fff;
+/* Top Bar */
+.top-bar {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+    padding: 24px 40px;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.top-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+    pointer-events: none;
+}
+
+.top-bar h1 {
     margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-}
-
-.status-bar {
-    background: #0d0d0d;
-    border-bottom: 1px solid #222;
-    padding: 10px 24px;
-    font-size: 0.8rem;
+    font-size: 20px;
     font-weight: 700;
-    letter-spacing: 1px;
+    color: #ffffff;
+    letter-spacing: -0.03em;
+    position: relative;
+    z-index: 1;
 }
 
-.status-bar.ok {
-    color: #00ff00;
+.connection-info {
+    margin-top: 8px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.9);
+    font-weight: 500;
+    position: relative;
+    z-index: 1;
 }
 
-.status-bar.err {
-    color: #ff0000;
+.connection-info::before {
+    content: '●';
+    color: #34d399;
+    margin-right: 8px;
+    font-size: 12px;
 }
 
-.content-area {
-    padding: 32px 24px;
+/* Main Container */
+.main-wrapper {
+    max-width: 800px;
+    margin: 56px auto;
+    padding: 0 32px;
 }
 
-.field-wrapper {
+/* Card */
+.card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
+    padding: 32px 36px;
     margin-bottom: 24px;
+    border: 1px solid rgba(99, 102, 241, 0.08);
+    transition: all 0.3s ease;
 }
 
-.field-label {
-    display: block;
-    font-size: 0.75rem;
+.card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 12px 32px rgba(0,0,0,0.06);
+    transform: translateY(-2px);
+}
+
+.card-title {
+    font-size: 13px;
     font-weight: 700;
-    color: #888;
+    color: #6366f1;
+    margin-bottom: 24px;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 8px;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-input, textarea {
-    width: 100%;
-    padding: 12px 14px;
-    background: #0d0d0d;
-    border: 1px solid #333;
-    color: #fff;
-    font-size: 0.9rem;
-    transition: all 0.2s;
+.card-title::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-radius: 2px;
 }
 
-input:focus, textarea:focus {
-    outline: none;
-    border-color: #666;
-    background: #151515;
+/* Input Fields */
+label {
+    display: block !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: #1e293b !important;
+    margin-bottom: 10px !important;
 }
 
-input::placeholder, textarea::placeholder {
-    color: #444;
+input[type="text"], 
+textarea {
+    width: 100% !important;
+    background: #ffffff !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    padding: 14px 16px !important;
+    font-size: 15px !important;
+    color: #0f172a !important;
+    line-height: 1.5 !important;
+    transition: all 0.2s ease !important;
+}
+
+input[type="text"]::placeholder,
+textarea::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+input[type="text"]:hover,
+textarea:hover {
+    border-color: #cbd5e1 !important;
+}
+
+input[type="text"]:focus, 
+textarea:focus {
+    outline: none !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1) !important;
+    background: #fafafa !important;
 }
 
 textarea {
-    resize: vertical;
-    min-height: 120px;
-    font-family: 'JetBrains Mono', monospace;
+    min-height: 200px !important;
+    resize: vertical !important;
+    font-family: 'Inter', sans-serif !important;
 }
 
-.btn-container {
-    margin-top: 28px;
+/* Button */
+.button-wrapper {
+    margin-top: 32px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
 }
 
 button {
-    padding: 12px 32px;
-    background: #fff;
-    color: #000;
-    border: none;
-    font-size: 0.85rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    cursor: pointer;
-    transition: all 0.15s;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 14px 32px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+    letter-spacing: 0.3px !important;
 }
 
 button:hover {
-    background: #e0e0e0;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4) !important;
 }
 
 button:active {
-    background: #c0c0c0;
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3) !important;
 }
 
-.output-terminal {
-    margin-top: 24px;
-    padding: 16px;
-    background: #000;
-    border: 1px solid #333;
-    color: #0f0;
-    font-size: 0.85rem;
-    min-height: 60px;
-    font-family: 'JetBrains Mono', monospace;
+/* Status Display */
+.status-box {
+    margin-top: 32px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-left: 4px solid #6366f1;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #334155;
+    line-height: 1.7;
     white-space: pre-wrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
-.footer-bar {
-    background: #0d0d0d;
-    border-top: 1px solid #222;
-    padding: 12px 24px;
-    font-size: 0.7rem;
-    color: #555;
-    text-align: right;
-    letter-spacing: 1px;
+/* Remove Gradio defaults */
+.gradio-container .wrap,
+.gradio-container .form,
+.gradio-container .block {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.gradio-container .gap {
+    gap: 0 !important;
+}
+
+/* Extra polish */
+::selection {
+    background: rgba(99, 102, 241, 0.2);
+    color: #1e293b;
 }
 """
 
+# =============================
+# UI BUILD
+# =============================
 def build():
-    with gr.Blocks(css=CSS) as demo:
-        with gr.Column(elem_classes="main-box"):
-            gr.HTML('<div class="header-bar"><h1>Twitter DM</h1></div>')
+    with gr.Blocks(title="Twitter DM Tool") as demo:
+        
+        # Header
+        gr.HTML(f"""
+            <div class="top-bar">
+                <h1>Twitter Direct Message Tool</h1>
+                <div class="connection-info">Connected as {CONNECTED_STATUS}</div>
+            </div>
+        """)
+        
+        # Main Content
+        with gr.Column(elem_classes="main-wrapper"):
             
-            if "CONNECTED" in CONNECTED_STATUS:
-                gr.HTML(f'<div class="status-bar ok">{CONNECTED_STATUS}</div>')
-            else:
-                gr.HTML(f'<div class="status-bar err">{CONNECTED_STATUS}</div>')
+            # Recipient Card
+            gr.HTML('<div class="card"><div class="card-title">Recipient</div>')
+            username = gr.Textbox(
+                label="Twitter Username",
+                placeholder="elonmusk",
+                container=False,
+            )
+            gr.HTML('</div>')
             
-            with gr.Column(elem_classes="content-area"):
-                gr.HTML('<div class="field-wrapper"><span class="field-label">Target Username</span></div>')
-                username = gr.Textbox(placeholder="e.g. elonmusk", container=False, show_label=False)
-                
-                gr.HTML('<div class="field-wrapper" style="margin-top:24px;"><span class="field-label">Message Content</span></div>')
-                message = gr.Textbox(placeholder="message text", lines=5, container=False, show_label=False)
-                
-                with gr.Row(elem_classes="btn-container"):
-                    btn = gr.Button("SEND")
-                
-                status = gr.Textbox(
-                    value="[SYSTEM READY]",
-                    interactive=False,
-                    show_label=False,
-                    container=False,
-                    elem_classes="output-terminal"
-                )
+            # Message Card
+            gr.HTML('<div class="card"><div class="card-title">Message</div>')
+            message = gr.Textbox(
+                label="Message Body",
+                placeholder="Write your message here...",
+                lines=7,
+                container=False,
+            )
+            gr.HTML('</div>')
             
-            gr.HTML('<div class="footer-bar">TWEEPY v4.14.0 / GRADIO</div>')
+            # Button
+            gr.HTML('<div class="button-wrapper">')
+            send_btn = gr.Button("Send Message", variant="primary", size="lg")
+            gr.HTML('</div>')
             
-            btn.click(fn=handle_send, inputs=[username, message], outputs=[status])
+            # Status
+            status = gr.Markdown(
+                value="Ready to send",
+                elem_classes="status-box",
+            )
+        
+        # Events
+        send_btn.click(handle_send, [username, message], status)
     
     return demo
 
+# =============================
+# ENTRY POINT
+# =============================
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 7860))
-    print(f"INITIALIZING → PORT {port}")
-    build().launch(server_name="0.0.0.0", server_port=port, share=False)
+    print(f"Starting on port {port}")
+    build().launch(
+        server_name="127.0.0.1",
+        server_port=port,
+        share=False,
+        css=CSS,
+    )
